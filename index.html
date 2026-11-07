@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>生日快乐 · shenxin.tw</title>
-<meta name="description" content="生日快乐">
+<title>生日快乐 · 沈欣</title>
+<meta name="description" content="致沈欣 · 十七岁生日快乐">
 <meta name="theme-color" content="#1b0f33">
 <meta property="og:type" content="website">
-<meta property="og:title" content="生日快乐">
-<meta property="og:description" content="致 shenxin · 新的一岁，万事胜意">
+<meta property="og:title" content="生日快乐 · 沈欣">
+<meta property="og:description" content="十七岁，生日快乐 🎂">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%8E%82%3C/text%3E%3C/svg%3E">
 <style>
@@ -239,6 +239,39 @@
     100%{transform:translateY(-118vh) translateX(-10px) rotate(-3deg)}
   }
 
+  /* ---------------- 生日歌按钮 ---------------- */
+  .music{
+    position:fixed;
+    top:calc(14px + env(safe-area-inset-top));
+    right:14px;
+    z-index:9;
+    display:flex;align-items:center;gap:9px;
+    padding:9px 15px 9px 13px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.07);
+    -webkit-backdrop-filter:blur(10px);
+    backdrop-filter:blur(10px);
+    color:rgba(255,244,224,.9);
+    font:inherit;font-size:12.5px;letter-spacing:.08em;
+    cursor:pointer;
+    transition:background .2s ease, transform .2s ease, border-color .2s ease;
+  }
+  .music:hover{background:rgba(255,255,255,.14)}
+  .music:active{transform:scale(.96)}
+  .music .bars{display:flex;align-items:flex-end;gap:2px;height:13px}
+  .music .bars i{display:block;width:2.5px;border-radius:2px;background:linear-gradient(#ffd76a,#ff9dc4);transition:height .2s ease}
+  .music .bars i:nth-child(1){height:5px}
+  .music .bars i:nth-child(2){height:11px}
+  .music .bars i:nth-child(3){height:7px}
+  .music .bars i:nth-child(4){height:13px}
+  .music.playing{border-color:rgba(255,215,106,.45);box-shadow:0 0 0 3px rgba(255,215,106,.08)}
+  .music.playing .bars i{animation:eq 1s ease-in-out infinite alternate}
+  .music.playing .bars i:nth-child(2){animation-delay:.18s}
+  .music.playing .bars i:nth-child(3){animation-delay:.36s}
+  .music.playing .bars i:nth-child(4){animation-delay:.54s}
+  @keyframes eq{from{height:3px}to{height:13px}}
+
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition:none!important}
     .balloon{display:none}
@@ -248,14 +281,19 @@
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
 
+<button class="music" id="music" type="button" aria-pressed="false" aria-label="播放生日歌">
+  <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <span class="label">生日歌</span>
+</button>
+
 <div class="stage">
-  <p class="kicker">Happy Birthday</p>
+  <p class="kicker">Happy 17th Birthday</p>
 
   <h1 class="title" aria-label="生日快乐">
     <span>生</span><span>日</span><span>快</span><span>乐</span>
   </h1>
 
-  <p class="sub">致 <b id="name">shenxin</b> · 新的一岁，万事胜意</p>
+  <p class="sub">致 <b id="name">沈欣</b> · 十七岁，生日快乐</p>
 
   <div class="cake" id="cake" aria-hidden="true">
     <div class="plate"></div>
@@ -269,7 +307,7 @@
   </div>
 
   <button class="blow" id="blow" type="button">吹蜡烛</button>
-  <p class="hint" id="hint">闭眼，许个愿 ✨</p>
+  <p class="hint" id="hint">点一下页面听生日歌 🎵</p>
 </div>
 
 <script>
@@ -277,7 +315,7 @@
   "use strict";
 
   /* ======== 只改这一行：生日主角的名字 ======== */
-  const NAME = "shenxin";
+  const NAME = "沈欣";
 
   document.getElementById("name").textContent = NAME;
   document.title = `生日快乐 · ${NAME}`;
@@ -479,6 +517,107 @@
     if (now - tapAt < 260) return;
     tapAt = now;
     spawn(e.clientX, e.clientY, 26, 1, 5);
+  });
+
+  /* ---------------- 生日歌（Web Audio 实时合成，不需要音频文件） ---------------- */
+  const music = document.getElementById("music");
+  const musicLabel = music.querySelector(".label");
+  const BEAT = 60 / 108;   // 108 BPM
+
+  // [频率, 拍数]
+  const MELODY = [
+    [392.00, .5], [392.00, .5], [440.00, 1], [392.00, 1], [523.25, 1], [493.88, 2],
+    [392.00, .5], [392.00, .5], [440.00, 1], [392.00, 1], [587.33, 1], [523.25, 2],
+    [392.00, .5], [392.00, .5], [783.99, 1], [659.25, 1], [523.25, 1], [493.88, 1], [440.00, 2],
+    [698.46, .5], [698.46, .5], [659.25, 1], [523.25, 1], [587.33, 1], [523.25, 2]
+  ];
+
+  let ac = null, master = null, playing = false, timer = null, nextAt = 0;
+
+  function ensureAudio() {
+    if (ac) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    ac = new Ctx();
+    master = ac.createGain();
+    master.gain.value = 0.0001;
+    master.connect(ac.destination);
+  }
+
+  function voice(freq, at, dur, vol, type) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur * 0.92);
+    o.connect(g); g.connect(master);
+    o.start(at); o.stop(at + dur + 0.06);
+  }
+
+  function schedule(from) {
+    let t = from;
+    for (let i = 0; i < MELODY.length; i++) {
+      const f = MELODY[i][0], d = MELODY[i][1] * BEAT;
+      voice(f, t, d, 0.26, "triangle");
+      voice(f * 2, t, d * 0.6, 0.045, "sine");
+      t += d;
+    }
+    return t + BEAT * 1.5;
+  }
+
+  function tick() {
+    if (!playing) return;
+    if (nextAt < ac.currentTime + 0.1) nextAt = ac.currentTime + 0.1;
+    nextAt = schedule(nextAt);
+    timer = setTimeout(tick, Math.max(400, (nextAt - ac.currentTime - 1) * 1000));
+  }
+
+  function playMusic() {
+    ensureAudio();
+    if (!ac) return;
+    if (ac.state === "suspended") ac.resume();
+    playing = true;
+    music.classList.add("playing");
+    music.setAttribute("aria-pressed", "true");
+    musicLabel.textContent = "暂停";
+    master.gain.cancelScheduledValues(ac.currentTime);
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), ac.currentTime);
+    master.gain.exponentialRampToValueAtTime(0.42, ac.currentTime + 0.8);
+    nextAt = ac.currentTime + 0.15;
+    clearTimeout(timer);
+    tick();
+  }
+
+  function pauseMusic() {
+    playing = false;
+    music.classList.remove("playing");
+    music.setAttribute("aria-pressed", "false");
+    musicLabel.textContent = "生日歌";
+    clearTimeout(timer);
+    if (ac && master) {
+      master.gain.cancelScheduledValues(ac.currentTime);
+      master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), ac.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.35);
+    }
+  }
+
+  music.addEventListener("click", (e) => {
+    e.stopPropagation();
+    playing ? pauseMusic() : playMusic();
+  });
+
+  // 浏览器不允许自动播放：第一次点页面时自动开始
+  let armed = true;
+  document.addEventListener("pointerdown", (e) => {
+    if (!armed) return;
+    armed = false;
+    if (e.target.closest("#music")) return;
+    if (!playing) playMusic();
+  }, { once: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && playing) pauseMusic();
   });
 
   /* ---------------- 启动 ---------------- */
